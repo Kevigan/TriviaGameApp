@@ -31,7 +31,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import com.example.triviagameapp.R
+import com.example.triviagameapp.Screen
 import com.example.triviagameapp.ui.theme.QuizBlue
 import com.example.triviagameapp.ui.theme.QuizCyan
 import com.example.triviagameapp.ui.theme.QuizCyanTransparent
@@ -42,7 +44,7 @@ import com.example.triviagameapp.ui.theme.QuizYellow
 
 @Composable
 fun HomeView(
-    content: @Composable (PaddingValues) -> Unit
+    navController: NavController
 ) {
     val scaffoldState = rememberScaffoldState()
     val configuration = LocalConfiguration.current
@@ -92,7 +94,7 @@ fun HomeView(
                     verticalArrangement = Arrangement.spacedBy(25.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    QuizButtons()
+                    QuizButtons(navController)
                 }
             } else {
                 // Bottom-aligned in landscape
@@ -103,23 +105,23 @@ fun HomeView(
                     horizontalArrangement = Arrangement.spacedBy(25.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    QuizButtons()
+                    QuizButtons(navController)
                 }
             }
-
-            content(padding)
         }
     }
 }
 
 @Composable
-private fun QuizButtons() {
+private fun QuizButtons(navController: NavController) {
     val buttonModifier = Modifier
         .width(260.dp)
         .height(60.dp)
 
     Button(
-        onClick = { /* Play */ },
+        onClick = {
+            navController.navigate(Screen.GameScreen.route)
+                  },
         modifier = buttonModifier,
         colors = ButtonDefaults.buttonColors(
             backgroundColor = QuizCyan,
