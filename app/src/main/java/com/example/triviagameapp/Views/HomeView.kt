@@ -107,7 +107,6 @@ fun HomeView(
                 }
             }
 
-            // 🔹 Optional content
             content(padding)
         }
     }
