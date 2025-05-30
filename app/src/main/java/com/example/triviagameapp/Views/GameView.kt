@@ -1,6 +1,7 @@
 package com.example.triviagameapp.Views
 
 import android.content.res.Configuration
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -21,15 +22,51 @@ import androidx.navigation.NavController
 import com.example.triviagameapp.R
 import com.example.triviagameapp.ui.theme.QuizCyan
 import com.example.triviagameapp.ui.theme.QuizCyan2
-import kotlinx.coroutines.delay
+import com.example.triviagameapp.NetWork.ApiService
+import com.example.triviagameapp.NetWork.RetrofitInstance
+import com.example.triviagameapp.ViewModels.TimerViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.triviagameapp.ViewModels.TriviaApiViewModel
+import com.example.triviagameapp.ViewModels.TriviaApiViewModelFactory
 
 @Composable
 fun GameView(
-    navController: NavController
+    navController: NavController,
+    apiService: ApiService = RetrofitInstance.apiService, // Retrofit instance
+    timerViewModel: TimerViewModel = viewModel() // Timer ViewModel
 ) {
+    // Use the factory to create the TriviaApiViewModel
+    val triviaApiViewModel: TriviaApiViewModel = viewModel(
+        factory = TriviaApiViewModelFactory(apiService)
+    )
+
+    // Observe the trivia questions and loading state
+    val triviaQuestions by triviaApiViewModel.triviaQuestions
+    val isLoading by triviaApiViewModel.isLoading
+
+    // Track the current question index
+    var currentQuestionIndex by remember { mutableStateOf(0) }
+
+    // Fetch trivia questions when the composable is first composed
+    LaunchedEffect(key1 = triviaQuestions.isEmpty()) {
+        // Only fetch the trivia questions if they are not already loaded
+        if (triviaQuestions.isEmpty()) {
+            try {
+                triviaApiViewModel.fetchSessionToken()  // Fetch session token first
+                triviaApiViewModel.fetchTriviaQuestions()  // Fetch trivia questions once the token is ready
+            } catch (e: Exception) {
+                Log.e("GameView", "Error fetching trivia questions", e)
+                // Optionally show a UI message to the user
+            }
+        }
+    }
+
     val configuration = LocalConfiguration.current
     val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
     val showExitDialog = remember { mutableStateOf(false) }
+
+    // Observe the time left from the TimerViewModel using by delegation
+    val timeLeft = timerViewModel.timeLeft.value
 
     // Intercept back button to show confirmation
     BackHandler {
@@ -42,7 +79,7 @@ fun GameView(
             painter = painterResource(id = R.drawable.game_background),
             contentDescription = "Game Background",
             modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop // Adjust content scale to cover the screen
+            contentScale = ContentScale.Crop
         )
 
         // 🔹 Question Background Box
@@ -54,49 +91,51 @@ fun GameView(
                 .padding(16.dp) // Padding inside the background
         ) {
             // 🔹 Question Text
+            val currentQuestion = triviaQuestions.getOrNull(currentQuestionIndex)
             Text(
-                text = "How many studio albums have the duo Daft Punk released?",
+                text = currentQuestion?.question ?: "Loading...",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
             )
         }
 
+        // 🔹 Timer
         QuestionTimer(
+            totalTime = timeLeft,
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = 130.dp),
-            onTimeOut = { /* handle timeout */ }
+                .padding(top = 130.dp), // Add padding to avoid overlap
+            onTimeOut = {
+                // Handle timeout here
+            }
         )
 
-        // 🔹 Answer Options (Bottom Aligned)
-        if (isPortrait) {
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                listOf("1", "5", "2", "4").forEach { answer ->
-                    AnswerButton(text = answer)
-                }
-            }
+        // Show loading screen if the data is being fetched
+        if (isLoading) {
+            LoadingScreen()
         } else {
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    AnswerButton(text = "1", modifier = Modifier.weight(1f))
-                    AnswerButton(text = "5", modifier = Modifier.weight(1f))
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    AnswerButton(text = "2", modifier = Modifier.weight(1f))
-                    AnswerButton(text = "4", modifier = Modifier.weight(1f))
+            // Show the trivia content once the questions are loaded
+            val currentQuestion = triviaQuestions.getOrNull(currentQuestionIndex)
+
+            currentQuestion?.let { trivia ->
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Display the answers (example)
+                    (listOf(trivia.correct_answer) + trivia.incorrect_answers).shuffled().forEach { answer ->
+                        AnswerButton(text = answer) {
+                            // Handle answer selection
+                            // After selecting an answer, move to the next question
+                            if (currentQuestionIndex < triviaQuestions.size - 1) {
+                                currentQuestionIndex++
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -125,7 +164,7 @@ fun GameView(
                         showExitDialog.value = false
                         navController.navigateUp()
                     }) {
-                        Text("Yes", color = Color.Red) // custom button text color
+                        Text("Yes", color = Color.Red)
                     }
                 },
                 dismissButton = {
@@ -133,18 +172,25 @@ fun GameView(
                         Text("Cancel", color = QuizCyan)
                     }
                 },
-                backgroundColor = Color(0xFF1C1C1E), // custom background color
-                shape = MaterialTheme.shapes.medium // optional: rounded corners
+                backgroundColor = Color(0xFF1C1C1E),
+                shape = MaterialTheme.shapes.medium
             )
-
         }
     }
 }
 
 @Composable
-fun AnswerButton(text: String, modifier: Modifier = Modifier) {
+fun LoadingScreen() {
+    // Simple loading screen with a circular progress indicator
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator(color = QuizCyan)
+    }
+}
+
+@Composable
+fun AnswerButton(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Button(
-        onClick = { /* Handle answer selection */ },
+        onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
             .height(60.dp),
@@ -163,18 +209,7 @@ fun QuestionTimer(
     modifier: Modifier = Modifier,
     onTimeOut: () -> Unit
 ) {
-    var timeLeft by remember { mutableStateOf(totalTime) }
-
-    LaunchedEffect(key1 = totalTime) {
-        val interval = 100L
-        while (timeLeft > 0) {
-            delay(interval)
-            timeLeft -= interval.toInt()
-        }
-        onTimeOut()
-    }
-
-    val progress = timeLeft / totalTime.toFloat()
+    val progress = totalTime / 10000f
 
     LinearProgressIndicator(
         progress = progress.coerceIn(0f, 1f),
@@ -185,5 +220,4 @@ fun QuestionTimer(
         backgroundColor = Color.LightGray
     )
 }
-
 

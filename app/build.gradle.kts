@@ -56,6 +56,15 @@ dependencies {
     val compose_version = "1.6.0-alpha08"
     val room = "2.6.0"
 
+    // Retrofit for making network requests
+    implementation ("com.squareup.retrofit2:retrofit:2.9.0")
+
+    // Gson converter for Retrofit to parse JSON into Kotlin data classes
+    implementation ("com.squareup.retrofit2:converter-gson:2.9.0")
+
+    // Coroutine support for Retrofit
+    implementation ("com.squareup.retrofit2:adapter-rxjava2:2.9.0")
+
     // Room
     implementation("androidx.room:room-runtime:$room")
     implementation("androidx.room:room-ktx:$room")
