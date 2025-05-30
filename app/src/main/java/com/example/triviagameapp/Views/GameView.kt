@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -45,7 +46,7 @@ fun GameView(
     val isLoading by triviaApiViewModel.isLoading
 
     // Track the current question index
-    var currentQuestionIndex by remember { mutableStateOf(0) }
+    var currentQuestionIndex by rememberSaveable { mutableStateOf(0) }
 
     // Fetch trivia questions when the composable is first composed
     LaunchedEffect(key1 = triviaQuestions.isEmpty()) {
@@ -61,8 +62,10 @@ fun GameView(
         }
     }
 
+    // Get the current configuration to check the orientation
     val configuration = LocalConfiguration.current
     val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+
     val showExitDialog = remember { mutableStateOf(false) }
 
     // Observe the time left from the TimerViewModel using by delegation
@@ -82,61 +85,114 @@ fun GameView(
             contentScale = ContentScale.Crop
         )
 
-        // 🔹 Question Background Box
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 48.dp, start = 16.dp, end = 16.dp)
-                .background(QuizCyan2, shape = RoundedCornerShape(12.dp))
-                .padding(16.dp) // Padding inside the background
+        // Use a Column to arrange the question and timer vertically
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Top
         ) {
-            // 🔹 Question Text
-            val currentQuestion = triviaQuestions.getOrNull(currentQuestionIndex)
-            Text(
-                text = currentQuestion?.question ?: "Loading...",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
+            // 🔹 Timer (placed at the top)
+            QuestionTimer(
+                totalTime = timeLeft,
+                modifier = Modifier.padding(top = 16.dp), // Padding to prevent overlap
+                onTimeOut = {
+                    // Handle timeout here
+                }
             )
-        }
 
-        // 🔹 Timer
-        QuestionTimer(
-            totalTime = timeLeft,
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 130.dp), // Add padding to avoid overlap
-            onTimeOut = {
-                // Handle timeout here
+            // 🔹 Question Background Box (placed below the timer)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(top = 48.dp, start = 16.dp, end = 16.dp)
+                    .background(QuizCyan2, shape = RoundedCornerShape(12.dp))
+                    .padding(16.dp) // Padding inside the background
+            ) {
+                // 🔹 Question Text
+                val currentQuestion = triviaQuestions.getOrNull(currentQuestionIndex)
+                Text(
+                    text = currentQuestion?.question ?: "Loading...",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
             }
-        )
 
-        // Show loading screen if the data is being fetched
-        if (isLoading) {
-            LoadingScreen()
-        } else {
-            // Show the trivia content once the questions are loaded
-            val currentQuestion = triviaQuestions.getOrNull(currentQuestionIndex)
+            // 🔹 Answers (below the question)
+            if (!isLoading) {
+                val currentQuestion = triviaQuestions.getOrNull(currentQuestionIndex)
+                currentQuestion?.let { trivia ->
+                    if (isPortrait) {
+                        // Portrait mode: Arrange answers in a column (one on top of the other)
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.CenterHorizontally)
+                                .padding(bottom = 24.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            // Display the answers (example)
+                            (listOf(trivia.correct_answer) + trivia.incorrect_answers).shuffled().forEach { answer ->
+                                AnswerButton(text = answer) {
+                                    // Handle answer selection
+                                    // After selecting an answer, move to the next question
+                                    if (currentQuestionIndex < triviaQuestions.size - 1) {
+                                        currentQuestionIndex++
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // Landscape mode: Arrange answers in two rows (2 on top, 2 on bottom)
+                        Row(
+                            modifier = Modifier
+                                .align(Alignment.CenterHorizontally)
+                                .padding(bottom = 24.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            // First row with 2 answers
+                            (listOf(trivia.correct_answer) + trivia.incorrect_answers).shuffled().take(2).forEach { answer ->
+                                AnswerButton(
+                                    text = answer,
+                                    modifier = Modifier
+                                        .weight(1f) // This makes the buttons equally share the space
+                                        .fillMaxWidth() // Fill max width in landscape mode
+                                ) {
+                                    // Handle answer selection
+                                    // After selecting an answer, move to the next question
+                                    if (currentQuestionIndex < triviaQuestions.size - 1) {
+                                        currentQuestionIndex++
+                                    }
+                                }
+                            }
+                        }
 
-            currentQuestion?.let { trivia ->
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // Display the answers (example)
-                    (listOf(trivia.correct_answer) + trivia.incorrect_answers).shuffled().forEach { answer ->
-                        AnswerButton(text = answer) {
-                            // Handle answer selection
-                            // After selecting an answer, move to the next question
-                            if (currentQuestionIndex < triviaQuestions.size - 1) {
-                                currentQuestionIndex++
+                        Row(
+                            modifier = Modifier
+                                .align(Alignment.CenterHorizontally)
+                                .padding(bottom = 24.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            // Second row with 2 answers
+                            (listOf(trivia.correct_answer) + trivia.incorrect_answers).shuffled().drop(2).take(2).forEach { answer ->
+                                AnswerButton(
+                                    text = answer,
+                                    modifier = Modifier
+                                        .weight(1f) // This makes the buttons equally share the space
+                                        .fillMaxWidth() // Fill max width in landscape mode
+                                ) {
+                                    // Handle answer selection
+                                    // After selecting an answer, move to the next question
+                                    if (currentQuestionIndex < triviaQuestions.size - 1) {
+                                        currentQuestionIndex++
+                                    }
+                                }
                             }
                         }
                     }
                 }
+            } else {
+                // Show loading screen if the data is being fetched
+                LoadingScreen()
             }
         }
 
@@ -192,8 +248,8 @@ fun AnswerButton(text: String, modifier: Modifier = Modifier, onClick: () -> Uni
     Button(
         onClick = onClick,
         modifier = modifier
-            .fillMaxWidth()
-            .height(60.dp),
+            .height(60.dp)
+            .fillMaxWidth(), // Ensure buttons fill width in portrait mode
         colors = ButtonDefaults.buttonColors(
             backgroundColor = QuizCyan,
             contentColor = Color.White
@@ -220,4 +276,9 @@ fun QuestionTimer(
         backgroundColor = Color.LightGray
     )
 }
+
+
+
+
+
 
