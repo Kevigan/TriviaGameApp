@@ -7,8 +7,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.triviagameapp.ViewModels.TimerViewModel
+import com.example.triviagameapp.Views.CategoryView
 import com.example.triviagameapp.Views.GameView
 import com.example.triviagameapp.Views.HomeView
+import com.example.triviagameapp.Views.ScoreView
 
 @Composable
 fun Navigation(
@@ -21,8 +23,18 @@ fun Navigation(
             HomeView(navController)
         }
 
-        composable(Screen.GameScreen.route){
-            GameView(navController, timerViewModel)
+        composable("gameScreen/{categoryId}") { backStackEntry ->
+            // Retrieve the categoryId from the navigation arguments
+            val categoryId = backStackEntry.arguments?.getString("categoryId")?.toInt() ?: 0
+            GameView(navController = navController, categoryId = categoryId, timerViewModel)
+        }
+
+        composable(Screen.ScoreScreen.route){
+            ScoreView(navController)
+        }
+
+        composable(Screen.CategoryScreen.route){
+            CategoryView(navController)
         }
 
     }

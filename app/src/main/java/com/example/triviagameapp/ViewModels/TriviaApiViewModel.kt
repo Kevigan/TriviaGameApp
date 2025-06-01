@@ -38,7 +38,7 @@ class TriviaApiViewModel(private val apiService: ApiService) : ViewModel() {
         }
     }
 
-    fun fetchTriviaQuestions() {
+    fun fetchTriviaQuestions(categoryId: Int) {
         viewModelScope.launch {
             _isLoading.value = true
             try {
@@ -46,7 +46,8 @@ class TriviaApiViewModel(private val apiService: ApiService) : ViewModel() {
                 val response = apiService.getTriviaQuestions(
                     amount = 10,
                     encode = "url3986",
-                    token = token
+                    token = token,
+                    category = categoryId
                 )
 
                 // Decode each question and answer

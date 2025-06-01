@@ -15,7 +15,8 @@ interface ApiService {
     suspend fun getTriviaQuestions(
         @Query("amount") amount: Int,
         @Query("encode") encode: String,
-        @Query("token") token: String? = null
+        @Query("token") token: String? = null,
+        @Query("category") category: Int? = null
     ): TriviaApiResponse
 
 }

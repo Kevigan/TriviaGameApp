@@ -120,7 +120,8 @@ private fun QuizButtons(navController: NavController) {
 
     Button(
         onClick = {
-            navController.navigate(Screen.GameScreen.route)
+            //navController.navigate(Screen.GameScreen.route)
+            navController.navigate(Screen.CategoryScreen.route)
                   },
         modifier = buttonModifier,
         colors = ButtonDefaults.buttonColors(

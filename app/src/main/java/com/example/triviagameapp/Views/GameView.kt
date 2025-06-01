@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
@@ -13,6 +14,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
@@ -27,6 +29,7 @@ import com.example.triviagameapp.NetWork.ApiService
 import com.example.triviagameapp.NetWork.RetrofitInstance
 import com.example.triviagameapp.ViewModels.TimerViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.triviagameapp.Screen
 import com.example.triviagameapp.ViewModels.TriviaApiViewModel
 import com.example.triviagameapp.ViewModels.TriviaApiViewModelFactory
 import com.example.triviagameapp.ui.theme.RedTransparent
@@ -34,6 +37,7 @@ import com.example.triviagameapp.ui.theme.RedTransparent
 @Composable
 fun GameView(
     navController: NavController,
+    categoryId: Int,
     timerViewModel: TimerViewModel,
     apiService: ApiService = RetrofitInstance.apiService
 ) {
@@ -57,7 +61,7 @@ fun GameView(
     // Track dialog visibility using rememberSaveable
     val showDialog = rememberSaveable { mutableStateOf(false) }
     val showExitDialog = rememberSaveable { mutableStateOf(false) }
-    val showNextQuestionDialog = rememberSaveable { mutableStateOf(false) }
+    //val showNextQuestionDialog = rememberSaveable { mutableStateOf(false) }
     val showAnswerFeedbackDialog = rememberSaveable { mutableStateOf(false) }
 
     // Track if the game has started
@@ -71,7 +75,7 @@ fun GameView(
         if (triviaQuestions.isEmpty()) {
             try {
                 triviaApiViewModel.fetchSessionToken()  // Fetch session token first
-                triviaApiViewModel.fetchTriviaQuestions()  // Fetch trivia questions once the token is ready
+                triviaApiViewModel.fetchTriviaQuestions(categoryId)  // Fetch trivia questions once the token is ready
             } catch (e: Exception) {
                 Log.e("GameView", "Error fetching trivia questions", e)
             }
@@ -92,7 +96,7 @@ fun GameView(
         timerViewModel.resetTimer()
         timerViewModel.startTimer {
             // Handle timeout (move to next question after time out)
-            showNextQuestionDialog.value = true
+            showAnswerFeedbackDialog.value = true
         }
     }
 
@@ -118,10 +122,12 @@ fun GameView(
             shuffledAnswers.value = shuffleAnswers(currentQuestionIndex)
             timerViewModel.resetTimer()
             timerViewModel.startTimer {
-                showNextQuestionDialog.value = true
+                showAnswerFeedbackDialog.value = true
             }
+        }else{
+            navController.navigate(Screen.ScoreScreen.route)
         }
-        showNextQuestionDialog.value = false
+        showAnswerFeedbackDialog.value = false
     }
 
     // Stop the timer when an answer is selected and check the correctness of the answer
@@ -129,7 +135,7 @@ fun GameView(
         timerViewModel.stopTimer()
         val currentQuestion = triviaQuestions.getOrNull(currentQuestionIndex)
         val isCorrect = currentQuestion?.correct_answer == selectedAnswer
-
+        Log.d("GameView", "Category: ${currentQuestion?.category}")
         // Set the feedback message list
         answerFeedbackMessage.value = if (isCorrect) {
             listOf("Correct!", "")
@@ -183,10 +189,19 @@ fun GameView(
             }
 
             if (gameStarted) {
+                val currentQuestionIndexDisplay = "${currentQuestionIndex + 1}/${triviaQuestions.size}"
+                Text(
+                    text = currentQuestionIndexDisplay,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    modifier = Modifier.padding(top = 8.dp).align(Alignment.CenterHorizontally)
+                )
+
                 Box(
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)
-                        .padding(top = 48.dp, start = 16.dp, end = 16.dp)
+                        .padding(top = 32.dp, start = 16.dp, end = 16.dp)
                         .background(QuizCyan2, shape = RoundedCornerShape(12.dp))
                         .padding(16.dp)
                 ) {
@@ -241,7 +256,7 @@ fun GameView(
                                         text = answer,
                                         modifier = Modifier
                                             .weight(1f)
-                                            .fillMaxWidth() ,
+                                            .fillMaxWidth(),
                                     ) {
                                         handleAnswerSelection(answer)
                                     }
@@ -274,7 +289,6 @@ fun GameView(
                 LoadingScreen()
             }
         }
-        Log.d("GameView", "Blaaablaaalbaaaal: ${answerFeedbackMessage.value[1]}")
         // Show Exit Confirmation Dialog
         CustomDialog(
             showDialog = showExitDialog,
@@ -300,7 +314,7 @@ fun GameView(
         )
 
         // Show Next Question Dialog when time runs out
-        CustomDialog(
+        /*CustomDialog(
             showDialog = showNextQuestionDialog,
             title = "Next Question",
             message = "Time's up! Click next to proceed.",
@@ -308,20 +322,16 @@ fun GameView(
             onButtonClick = {
                 moveToNextQuestion()
             }
-        )
+        )*/
 
         // Show Answer Feedback Dialog after answer selection
         CustomDialog(
             showDialog = showAnswerFeedbackDialog,
             title = answerFeedbackMessage.value[0],
-            message =  if (answerFeedbackMessage.value[0] == "Incorrect") {
-                "The correct answer was: ${answerFeedbackMessage.value[1]}"
-            } else {
-                //Log.d("GameView", "Displaying correct answer message: ${answerFeedbackMessage.value[1]}")
-                "Well done!"
-            },
+            message = if (answerFeedbackMessage.value[0] == "Incorrect!")  "The correct answer was: ${answerFeedbackMessage.value[1]}"
+            else if (answerFeedbackMessage.value[0] == "Correct!")  "Well done!"
+            else "Times up!",
             buttonText = "Next",
-            backgroundColor = RedTransparent,
             backgroundAlpha = 0.5f,
             background2Alpha = 1f,
             onButtonClick = {
@@ -393,14 +403,19 @@ fun CustomDialog(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = backgroundAlpha))
+                .pointerInput(Unit) { // This makes the background unclickable, blocking any interactions
+                    detectTapGestures(onPress = { })
+                }
         ) {
             // The actual dialog content
+            val colorBackground: Color =
+                if (title == "Incorrect!") RedTransparent else if (title == "Correct!") Color.Green else backgroundColor
             Box(
                 modifier = Modifier
                     .align(Alignment.Center)
                     .offset(y = (-75).dp)
                     .background(
-                        color = backgroundColor.copy(alpha = background2Alpha),
+                        color = colorBackground.copy(alpha = background2Alpha),
                         shape = RoundedCornerShape(12.dp)
                     )
                     .padding(16.dp)
