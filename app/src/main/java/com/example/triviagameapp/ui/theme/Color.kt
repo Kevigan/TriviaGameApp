@@ -18,4 +18,6 @@ val QuizYellow = Color(0xFFFFD600)
 val QuizCyan = Color(0xFF00BCD4)
 val QuizCyan2 = Color(0xFF008C9E) // Darker cyan color
 val QuizCyanTransparent = Color(0xAA00BCD4) // semi-transparent cyan
+val RedTransparent = Color(0xAAFF0000)
+
 
