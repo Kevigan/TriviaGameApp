@@ -28,6 +28,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -62,7 +63,25 @@ fun HomeView(
     val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
     val currentUser by sessionViewModel.currentUser.collectAsState()
+    var userName by remember { mutableStateOf("Not logged in") }
+    var userScore by remember { mutableStateOf("0") }
     val showLoginDialog = remember { mutableStateOf(currentUser == null) }
+
+    // Fetch user name from Firestore if logged in via email
+    LaunchedEffect(currentUser) {
+        if (currentUser != null) {
+            // Fetch user name and score from Firestore if logged in via email
+            sessionViewModel.fetchUserDataFromFirestore { fetchedUserData ->
+                // Update the UI state after fetching user data
+                userName = fetchedUserData?.name ?: "Unknown User"
+                userScore = (fetchedUserData?.totalScore ?: 0).toString()
+            }
+        } else {
+            userName = "Not logged in"
+            userScore = "0"
+        }
+    }
+
 
     // Watch for auth changes to control login dialog
     LaunchedEffect(currentUser) {
@@ -106,18 +125,44 @@ fun HomeView(
                     )
                     .padding(horizontal = 24.dp, vertical = 12.dp)
             ) {
-                Text(
-                    text = "Quiz Trivia",
-                    fontSize = 42.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .padding(bottom = 1.dp),
+                    verticalArrangement = Arrangement.spacedBy(25.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+
+                    Text(
+                        text = "Quiz Trivia",
+                        fontSize = 42.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+
+                    Text(
+                        text = "Score: $userScore",
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+
+                    Text(
+                        text = if (currentUser != null)
+                            "Logged in as: $userName"
+                        else
+                            "Not logged in",
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                    )
+                }
             }
 
             if (isPortrait) {
                 Column(
                     modifier = Modifier
-                        .align(Alignment.BottomCenter).padding(bottom = 100.dp),
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 100.dp),
                     verticalArrangement = Arrangement.spacedBy(25.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -128,7 +173,7 @@ fun HomeView(
                 Row(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(bottom = 25.dp),
+                        .padding(bottom = 5.dp),
                     horizontalArrangement = Arrangement.spacedBy(25.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -144,7 +189,8 @@ private fun QuizButtons(
     navController: NavController,
     isPortrait: Boolean,
     sessionViewModel: SessionViewModel,
-    googleSignInClient: GoogleSignInClient) {
+    googleSignInClient: GoogleSignInClient
+) {
     val buttonModifier = Modifier
         .width(260.dp)
         .height(60.dp)
@@ -154,7 +200,9 @@ private fun QuizButtons(
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxWidth().padding(top = 32.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 32.dp)
         ) {
             Button(
                 onClick = { navController.navigate(Screen.CategoryScreen.route) },
@@ -207,11 +255,13 @@ private fun QuizButtons(
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxWidth().padding(top = 32.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 32.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // First three buttons in a row
                 Button(
@@ -247,19 +297,24 @@ private fun QuizButtons(
                     Text("Settings", fontSize = 18.sp)
                 }
             }
-
-            // Fourth button centered beneath the first three
-            Button(
-                onClick = {
-                    sessionViewModel.signOut(googleSignInClient)
-                },
-                modifier = buttonModifier,
-                colors = ButtonDefaults.buttonColors(
-                    backgroundColor = QuizCyan,
-                    contentColor = Color.White
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
             ) {
-                Text("Logout", fontSize = 18.sp)
+
+                // Fourth button centered beneath the first three
+                Button(
+                    onClick = {
+                        sessionViewModel.signOut(googleSignInClient)
+                    },
+                    modifier = buttonModifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        backgroundColor = QuizCyan,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text("Logout", fontSize = 18.sp)
+                }
             }
         }
     }

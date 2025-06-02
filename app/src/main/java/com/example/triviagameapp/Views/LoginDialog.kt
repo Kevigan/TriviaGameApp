@@ -1,6 +1,7 @@
 package com.example.triviagameapp.Views
 
 import android.content.Intent
+import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,10 +28,10 @@ fun LoginDialog(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
+    var userName by remember { mutableStateOf("") } // New variable for the user's name
     var isRegisterMode by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
-    //val colors = MaterialTheme.colors
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -55,7 +56,14 @@ fun LoginDialog(
                     isPassword = true
                 )
 
+                // Add a new field for the user's name
                 if (isRegisterMode) {
+                    ThemedTextField(
+                        value = userName,
+                        onValueChange = { userName = it },
+                        label = "Name"
+                    )
+
                     ThemedTextField(
                         value = confirmPassword,
                         onValueChange = { confirmPassword = it },
@@ -67,24 +75,30 @@ fun LoginDialog(
         },
         confirmButton = {
             TextButton(onClick = {
-                if (email.isBlank() || password.isBlank() || (isRegisterMode && confirmPassword.isBlank())) {
+                // Validate inputs
+                if (email.isBlank() || password.isBlank() || (isRegisterMode && confirmPassword.isBlank()) || (isRegisterMode && userName.isBlank())) {
                     UiEventDispatcher.send("Please fill in all fields")
                     return@TextButton
                 }
 
                 if (isRegisterMode) {
+                    // Validate passwords
                     if (password != confirmPassword) {
                         UiEventDispatcher.send("Passwords do not match")
                         return@TextButton
                     }
 
+                    // Register the user and save to Firestore
                     sessionViewModel.register(
                         email.trim(), password,
                         onSuccess = {
+                            // Now save the user's name to Firestore
+                            sessionViewModel.saveUserToFirestore(userName.trim(), email.trim())
                             UiEventDispatcher.send("Registered and logged in")
                             onLoginSuccess()
                         },
                         onFailure = {
+                            Log.e("RegistrationError", "Registration failed: ${it.message}")
                             UiEventDispatcher.send("Registration failed: ${it.message}")
                         }
                     )
@@ -96,6 +110,7 @@ fun LoginDialog(
                             onLoginSuccess()
                         },
                         onFailure = {
+                            Log.e("RegistrationError", "Registration failed: ${it.message}")
                             UiEventDispatcher.send("Login failed: ${it.message}")
                         }
                     )
@@ -127,6 +142,7 @@ fun LoginDialog(
         }
     )
 }
+
 
 @Composable
 fun ThemedTextField(

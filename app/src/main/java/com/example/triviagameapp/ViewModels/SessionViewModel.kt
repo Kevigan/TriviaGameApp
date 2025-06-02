@@ -1,10 +1,13 @@
 package com.example.triviagameapp.ViewModels
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
+import com.example.triviagameapp.Data.UserData
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.EmailAuthProvider
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 class SessionViewModel : ViewModel() {
 
     private val auth = FirebaseAuth.getInstance()
+    private val db = FirebaseFirestore.getInstance()  // Initialize Firestore instance
 
     // Mutable state to hold the current authenticated user
     private val _currentUser = MutableStateFlow(auth.currentUser)
@@ -108,5 +112,74 @@ class SessionViewModel : ViewModel() {
         auth.sendPasswordResetEmail(email)
             .addOnSuccessListener { onSuccess() }
             .addOnFailureListener { onFailure(it) }
+    }
+
+    // Save user data to Firestore (including name, email, score)
+    fun saveUserToFirestore(userName: String, email: String) {
+        val user = _currentUser.value ?: return  // If user is null, return early
+
+        val userId = user.uid  // User ID from the current authenticated user
+        val finalUserName = user.displayName ?: userName // Use either Google display name or the user-provided name
+
+        val userData = hashMapOf(
+            "userId" to userId,
+            "name" to finalUserName,  // Use either Google display name or the user-provided name
+            "email" to email,
+            "totalScore" to 0, // Initialize with zero score
+            "categoryScores" to mapOf<String, Int>() // Initialize with empty category scores
+        )
+
+        db.collection("users")
+            .document(userId)
+            .set(userData)
+            .addOnSuccessListener {
+                Log.d("SessionViewModel", "User data saved to Firestore")
+            }
+            .addOnFailureListener { exception ->
+                Log.e("SessionViewModel", "Error saving user data", exception)
+            }
+    }
+
+    // Get user name from Firestore (for email login)
+    fun getUserNameFromFirestore(onSuccess: (String?) -> Unit) {
+        val user = auth.currentUser
+        user?.let {
+            db.collection("users")
+                .document(it.uid)
+                .get()
+                .addOnSuccessListener { documentSnapshot ->
+                    val name = documentSnapshot.getString("name")
+                    onSuccess(name)
+                }
+                .addOnFailureListener { exception ->
+                    onSuccess(null)
+                    Log.e("SessionViewModel", "Error getting user name", exception)
+                }
+        } ?: onSuccess(null)
+    }
+
+    // Fetch user data from Firestore
+    fun fetchUserDataFromFirestore(onSuccess: (UserData?) -> Unit) {
+        val user = _currentUser.value
+        if (user == null) {
+            Log.e("SessionViewModel", "No user is currently signed in.")
+            onSuccess(null)
+            return
+        }
+
+        val userRef = db.collection("users").document(user.uid)
+        userRef.get().addOnSuccessListener { documentSnapshot ->
+            if (documentSnapshot.exists()) {
+                val userData = documentSnapshot.toObject(UserData::class.java)
+                onSuccess(userData)
+            } else {
+                Log.e("SessionViewModel", "User document not found.")
+                onSuccess(null)
+            }
+        }.addOnFailureListener { exception ->
+            // Log the exception for better debugging
+            Log.e("SessionViewModel", "Error fetching user data", exception)
+            onSuccess(null)
+        }
     }
 }

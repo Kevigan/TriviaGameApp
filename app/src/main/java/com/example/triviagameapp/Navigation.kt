@@ -24,7 +24,7 @@ fun Navigation(
     gameViewModel: GameViewModel,
     googleSignInClient: GoogleSignInClient,
     googleSignInLauncher: ActivityResultLauncher<Intent>,
-    sessionViewModel: SessionViewModel = viewModel()
+    sessionViewModel: SessionViewModel
 ){
     NavHost(navController = navController, startDestination = Screen.HomeScreen.route){
 
