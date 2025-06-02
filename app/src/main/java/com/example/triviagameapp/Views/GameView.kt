@@ -30,6 +30,7 @@ import com.example.triviagameapp.NetWork.RetrofitInstance
 import com.example.triviagameapp.ViewModels.TimerViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.triviagameapp.Screen
+import com.example.triviagameapp.ViewModels.GameViewModel
 import com.example.triviagameapp.ViewModels.TriviaApiViewModel
 import com.example.triviagameapp.ViewModels.TriviaApiViewModelFactory
 import com.example.triviagameapp.ui.theme.RedTransparent
@@ -37,6 +38,7 @@ import com.example.triviagameapp.ui.theme.RedTransparent
 @Composable
 fun GameView(
     navController: NavController,
+    gameViewModel: GameViewModel,
     categoryId: Int,
     timerViewModel: TimerViewModel,
     apiService: ApiService = RetrofitInstance.apiService
@@ -135,7 +137,11 @@ fun GameView(
         timerViewModel.stopTimer()
         val currentQuestion = triviaQuestions.getOrNull(currentQuestionIndex)
         val isCorrect = currentQuestion?.correct_answer == selectedAnswer
-        Log.d("GameView", "Category: ${currentQuestion?.category}")
+
+        if (isCorrect) {
+            gameViewModel.increaseScore() // Increase score
+        }
+
         // Set the feedback message list
         answerFeedbackMessage.value = if (isCorrect) {
             listOf("Correct!", "")
@@ -196,6 +202,14 @@ fun GameView(
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                     modifier = Modifier.padding(top = 8.dp).align(Alignment.CenterHorizontally)
+                )
+
+                Text(
+                    text = "Score: ${gameViewModel.score.value}",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    modifier = Modifier.padding(top = 8.dp).align(Alignment.End)
                 )
 
                 Box(

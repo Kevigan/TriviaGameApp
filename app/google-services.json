@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "545378547300",
+    "project_id": "triviagameapp-a9e54",
+    "storage_bucket": "triviagameapp-a9e54.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:545378547300:android:6acc584f3588ed359c5171",
+        "android_client_info": {
+          "package_name": "com.example.triviagameapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "545378547300-qpcp2vu8bd0jugdtamlpic0jm6e7kk8r.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.triviagameapp",
+            "certificate_hash": "183e7609fea0aed9f4ccd1b1b4251511adbb4b0b"
+          }
+        },
+        {
+          "client_id": "545378547300-c8q4ucoiae3ur6lv05cu6ous3t8rcq1a.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBMDg43539RZLnLNi1b52Hg26il71ArObE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "545378547300-c8q4ucoiae3ur6lv05cu6ous3t8rcq1a.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

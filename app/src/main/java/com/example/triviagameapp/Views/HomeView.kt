@@ -1,14 +1,14 @@
 package com.example.triviagameapp.Views
 
+import android.content.Intent
 import android.content.res.Configuration
+import androidx.activity.result.ActivityResultLauncher
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,10 +17,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
+import androidx.compose.material.Icon
+import androidx.compose.material.MaterialTheme
 import androidx.compose.material.rememberScaffoldState
 import androidx.compose.material.Scaffold
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -28,12 +35,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.triviagameapp.R
 import com.example.triviagameapp.Screen
+import com.example.triviagameapp.ViewModels.SessionViewModel
 import com.example.triviagameapp.ui.theme.QuizBlue
 import com.example.triviagameapp.ui.theme.QuizCyan
 import com.example.triviagameapp.ui.theme.QuizCyanTransparent
@@ -41,14 +48,36 @@ import com.example.triviagameapp.ui.theme.QuizGreen
 import com.example.triviagameapp.ui.theme.QuizOrange
 import com.example.triviagameapp.ui.theme.QuizTitleBackground
 import com.example.triviagameapp.ui.theme.QuizYellow
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
 
 @Composable
 fun HomeView(
-    navController: NavController
+    navController: NavController,
+    sessionViewModel: SessionViewModel,
+    googleSignInClient: GoogleSignInClient,
+    googleSignInLauncher: ActivityResultLauncher<Intent>
 ) {
     val scaffoldState = rememberScaffoldState()
     val configuration = LocalConfiguration.current
     val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+
+    val currentUser by sessionViewModel.currentUser.collectAsState()
+    val showLoginDialog = remember { mutableStateOf(currentUser == null) }
+
+    // Watch for auth changes to control login dialog
+    LaunchedEffect(currentUser) {
+        showLoginDialog.value = currentUser == null
+    }
+
+    if (showLoginDialog.value) {
+        LoginDialog(
+            onLoginSuccess = { showLoginDialog.value = false },
+            onDismiss = { },
+            sessionViewModel = sessionViewModel,
+            googleSignInClient = googleSignInClient,
+            launcher = googleSignInLauncher
+        )
+    }
 
     Scaffold(
         scaffoldState = scaffoldState
@@ -85,27 +114,25 @@ fun HomeView(
                 )
             }
 
-            // 🔹 Buttons based on orientation
             if (isPortrait) {
-                // Centered vertically in portrait
                 Column(
                     modifier = Modifier
-                        .align(Alignment.Center),
+                        .align(Alignment.BottomCenter).padding(bottom = 100.dp),
                     verticalArrangement = Arrangement.spacedBy(25.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    QuizButtons(navController)
+                    QuizButtons(navController, true, sessionViewModel, googleSignInClient)
                 }
             } else {
                 // Bottom-aligned in landscape
                 Row(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(bottom = 24.dp),
+                        .padding(bottom = 25.dp),
                     horizontalArrangement = Arrangement.spacedBy(25.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    QuizButtons(navController)
+                    QuizButtons(navController, false, sessionViewModel, googleSignInClient)
                 }
             }
         }
@@ -113,45 +140,128 @@ fun HomeView(
 }
 
 @Composable
-private fun QuizButtons(navController: NavController) {
+private fun QuizButtons(
+    navController: NavController,
+    isPortrait: Boolean,
+    sessionViewModel: SessionViewModel,
+    googleSignInClient: GoogleSignInClient) {
     val buttonModifier = Modifier
         .width(260.dp)
         .height(60.dp)
 
-    Button(
-        onClick = {
-            //navController.navigate(Screen.GameScreen.route)
-            navController.navigate(Screen.CategoryScreen.route)
-                  },
-        modifier = buttonModifier,
-        colors = ButtonDefaults.buttonColors(
-            backgroundColor = QuizCyan,
-            contentColor = Color.White
-        )
-    ) {
-        Text("Play", fontSize = 18.sp)
-    }
+    if (isPortrait) {
+        // Portrait mode: 4 buttons stacked vertically
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 32.dp)
+        ) {
+            Button(
+                onClick = { navController.navigate(Screen.CategoryScreen.route) },
+                modifier = buttonModifier,
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = QuizCyan,
+                    contentColor = Color.White
+                )
+            ) {
+                Text("Play", fontSize = 18.sp)
+            }
 
-    Button(
-        onClick = { /* Leaderboard */ },
-        modifier = buttonModifier,
-        colors = ButtonDefaults.buttonColors(
-            backgroundColor = QuizCyan,
-            contentColor = Color.White
-        )
-    ) {
-        Text("Leaderboard", fontSize = 18.sp)
-    }
+            Button(
+                onClick = { /* Leaderboard */ },
+                modifier = buttonModifier,
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = QuizCyan,
+                    contentColor = Color.White
+                )
+            ) {
+                Text("Leaderboard", fontSize = 18.sp)
+            }
 
-    Button(
-        onClick = { /* Settings */ },
-        modifier = buttonModifier,
-        colors = ButtonDefaults.buttonColors(
-            backgroundColor = QuizCyan,
-            contentColor = Color.White
-        )
-    ) {
-        Text("Settings", fontSize = 18.sp)
+            Button(
+                onClick = { /* Settings */ },
+                modifier = buttonModifier,
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = QuizCyan,
+                    contentColor = Color.White
+                )
+            ) {
+                Text("Settings", fontSize = 18.sp)
+            }
+
+            Button(
+                onClick = {
+                    sessionViewModel.signOut(googleSignInClient)
+                },
+                modifier = buttonModifier,
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = QuizCyan,
+                    contentColor = Color.White
+                )
+            ) {
+                Text("Logout", fontSize = 18.sp)
+            }
+        }
+    } else {
+        // Landscape mode: 3 buttons in a row, 4th centered beneath
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 32.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // First three buttons in a row
+                Button(
+                    onClick = { navController.navigate(Screen.CategoryScreen.route) },
+                    modifier = buttonModifier,
+                    colors = ButtonDefaults.buttonColors(
+                        backgroundColor = QuizCyan,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text("Play", fontSize = 18.sp)
+                }
+
+                Button(
+                    onClick = { /* Leaderboard */ },
+                    modifier = buttonModifier,
+                    colors = ButtonDefaults.buttonColors(
+                        backgroundColor = QuizCyan,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text("Leaderboard", fontSize = 18.sp)
+                }
+
+                Button(
+                    onClick = { /* Settings */ },
+                    modifier = buttonModifier,
+                    colors = ButtonDefaults.buttonColors(
+                        backgroundColor = QuizCyan,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text("Settings", fontSize = 18.sp)
+                }
+            }
+
+            // Fourth button centered beneath the first three
+            Button(
+                onClick = {
+                    sessionViewModel.signOut(googleSignInClient)
+                },
+                modifier = buttonModifier,
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = QuizCyan,
+                    contentColor = Color.White
+                )
+            ) {
+                Text("Logout", fontSize = 18.sp)
+            }
+        }
     }
 }
 

@@ -23,10 +23,12 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.triviagameapp.R
 import com.example.triviagameapp.Screen
+import com.example.triviagameapp.ViewModels.GameViewModel
 
 @Composable
 fun ScoreView(
-    navController: NavController
+    navController: NavController,
+    gameViewModel: GameViewModel
 ) {
     Box(
         modifier = Modifier
@@ -48,17 +50,17 @@ fun ScoreView(
         ) {
             // Title "Score"
             Text(
-                text = "Score",
+                text = "Score: ${gameViewModel.score.value}",
                 fontSize = 48.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = Color.Green
             )
 
             Text(
-                text = "9999",
+                text = "All Time Score: 999",
                 fontSize = 64.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = Color.Blue,
                 modifier = Modifier.padding(vertical = 16.dp)
             )
 
