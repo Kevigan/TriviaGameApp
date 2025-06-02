@@ -182,4 +182,29 @@ class SessionViewModel : ViewModel() {
             onSuccess(null)
         }
     }
+
+    fun updateTotalScore(newScore: Int, onComplete: (Boolean) -> Unit = {}) {
+        val user = _currentUser.value
+        if (user == null) {
+            Log.e("SessionViewModel", "No user is signed in.")
+            onComplete(false)
+            return
+        }
+
+        val userRef = db.collection("users").document(user.uid)
+
+        db.runTransaction { transaction ->
+            val snapshot = transaction.get(userRef)
+            val currentScore = snapshot.getLong("totalScore") ?: 0L
+            val updatedScore = currentScore + newScore
+            transaction.update(userRef, "totalScore", updatedScore)
+        }.addOnSuccessListener {
+            Log.d("SessionViewModel", "User score updated successfully.")
+            onComplete(true)
+        }.addOnFailureListener { exception ->
+            Log.e("SessionViewModel", "Failed to update score", exception)
+            onComplete(false)
+        }
+    }
+
 }

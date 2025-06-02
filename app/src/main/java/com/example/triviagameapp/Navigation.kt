@@ -44,7 +44,7 @@ fun Navigation(
         }
 
         composable(Screen.ScoreScreen.route){
-            ScoreView(navController, gameViewModel)
+            ScoreView(navController, gameViewModel, sessionViewModel)
         }
 
         composable(Screen.CategoryScreen.route){

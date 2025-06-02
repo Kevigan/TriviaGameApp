@@ -1,5 +1,6 @@
 package com.example.triviagameapp.Views
 
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.Button
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -24,12 +26,25 @@ import androidx.navigation.NavController
 import com.example.triviagameapp.R
 import com.example.triviagameapp.Screen
 import com.example.triviagameapp.ViewModels.GameViewModel
+import com.example.triviagameapp.ViewModels.SessionViewModel
 
 @Composable
 fun ScoreView(
     navController: NavController,
-    gameViewModel: GameViewModel
+    gameViewModel: GameViewModel,
+    sessionViewModel: SessionViewModel
 ) {
+    LaunchedEffect(Unit) {
+        sessionViewModel.updateTotalScore(gameViewModel.score.value) { success ->
+            if (success) {
+                Log.d("ScoreView", "Score updated successfully.")
+            } else {
+                Log.e("ScoreView", "Failed to update score.")
+            }
+        }
+    }
+
+
     Box(
         modifier = Modifier
             .fillMaxSize()

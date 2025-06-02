@@ -327,17 +327,6 @@ fun GameView(
             }
         )
 
-        // Show Next Question Dialog when time runs out
-        /*CustomDialog(
-            showDialog = showNextQuestionDialog,
-            title = "Next Question",
-            message = "Time's up! Click next to proceed.",
-            buttonText = "Next",
-            onButtonClick = {
-                moveToNextQuestion()
-            }
-        )*/
-
         // Show Answer Feedback Dialog after answer selection
         CustomDialog(
             showDialog = showAnswerFeedbackDialog,
