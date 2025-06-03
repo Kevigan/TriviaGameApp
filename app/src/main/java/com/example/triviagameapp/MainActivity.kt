@@ -99,6 +99,7 @@ fun handleGoogleSignInResult(
                     if (firebaseTask.isSuccessful) {
                         // After Firebase authentication, save the user to Firestore
                         sessionViewModel.saveUserToFirestore(displayName, email ?: "")
+                        sessionViewModel.loadUserData()
                         onLoginSuccess() // Trigger the login success
                     } else {
                         // Handle error if Firebase sign-in fails

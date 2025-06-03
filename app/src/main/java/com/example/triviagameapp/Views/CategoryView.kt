@@ -1,5 +1,6 @@
 package com.example.triviagameapp.Views
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,11 +27,13 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.triviagameapp.R
 import com.example.triviagameapp.Screen
+import com.example.triviagameapp.ViewModels.GameViewModel
+import com.example.triviagameapp.ViewModels.SessionViewModel
 import com.example.triviagameapp.ui.theme.QuizCyan
 import com.example.triviagameapp.ui.theme.SoftWhite
 
 @Composable
-fun CategoryView(navController: NavController) {
+fun CategoryView(navController: NavController, gameViewModel: GameViewModel) {
     // Sample category data, you can replace with your actual categories
     val categories = listOf(
         Category("General Knowledge", R.drawable.game_background,9),
@@ -60,6 +63,12 @@ fun CategoryView(navController: NavController) {
         // Add more categories if needed
     )
 
+    gameViewModel.resetScore()
+
+    BackHandler {
+        navController.navigate(Screen.HomeScreen.route)
+    }
+
     // LazyVerticalGrid for displaying categories in 3 columns
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),  // 3 categories in each row
@@ -70,9 +79,10 @@ fun CategoryView(navController: NavController) {
         items(categories.size) { index ->
             val category = categories[index]
             CategoryItem(category = category, onClick = {
-                // Handle category click (navigate to category screen or perform other actions)
-                navController.navigate("gameScreen/${category.id}")
+                gameViewModel.setCategory(category.id)
+                navController.navigate(Screen.DifficultyScreen.route) // Navigate to DifficultyView next
             })
+
         }
     }
 }

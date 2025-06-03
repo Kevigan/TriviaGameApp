@@ -8,6 +8,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,10 +22,31 @@ class SessionViewModel : ViewModel() {
     private val _currentUser = MutableStateFlow(auth.currentUser)
     val currentUser: StateFlow<FirebaseUser?> = _currentUser.asStateFlow()
 
+    private val _userName = MutableStateFlow("Unknown User")
+    val userName: StateFlow<String> = _userName.asStateFlow()
+
+    private val _userScore = MutableStateFlow(0)
+    val userScore: StateFlow<Int> = _userScore.asStateFlow()
+
+    val isEmailUser: Boolean
+        get() = _currentUser.value?.providerData?.any {
+            it.providerId == EmailAuthProvider.PROVIDER_ID
+        } == true
+
+
     // Initializing Auth State Listener to track user changes
     init {
-        auth.addAuthStateListener {
-            _currentUser.value = it.currentUser
+        auth.addAuthStateListener { firebaseAuth ->
+            val user = firebaseAuth.currentUser
+            _currentUser.value = user
+
+            // Auto-load user data if logged in
+            if (user != null) {
+                loadUserData()
+            } else {
+                _userName.value = "Not logged in"
+                _userScore.value = 0
+            }
         }
     }
 
@@ -74,10 +96,22 @@ class SessionViewModel : ViewModel() {
         onFailure: (Exception) -> Unit
     ) {
         val user = auth.currentUser ?: return
-        user.delete()
-            .addOnSuccessListener { onSuccess() }
-            .addOnFailureListener { onFailure(it) }
+
+        val userId = user.uid
+        val userDocRef = db.collection("users").document(userId)
+
+        // First delete from Firestore
+        userDocRef.delete().addOnSuccessListener {
+            // Then delete from FirebaseAuth
+            user.delete()
+                .addOnSuccessListener { onSuccess() }
+                .addOnFailureListener { onFailure(it) }
+        }.addOnFailureListener { exception ->
+            Log.e("SessionViewModel", "Failed to delete Firestore user document", exception)
+            onFailure(exception)
+        }
     }
+
 
     // Login method to authenticate the user
     fun login(
@@ -115,96 +149,98 @@ class SessionViewModel : ViewModel() {
     }
 
     // Save user data to Firestore (including name, email, score)
-    fun saveUserToFirestore(userName: String, email: String) {
-        val user = _currentUser.value ?: return  // If user is null, return early
+    fun saveUserToFirestore(userName: String, email: String, onComplete: () -> Unit = {}) {
+        val user = _currentUser.value ?: return
+        val userId = user.uid
+        val finalUserName = user.displayName ?: userName
 
-        val userId = user.uid  // User ID from the current authenticated user
-        val finalUserName = user.displayName ?: userName // Use either Google display name or the user-provided name
+        val userDocRef = db.collection("users").document(userId)
 
-        val userData = hashMapOf(
-            "userId" to userId,
-            "name" to finalUserName,  // Use either Google display name or the user-provided name
-            "email" to email,
-            "totalScore" to 0, // Initialize with zero score
-            "categoryScores" to mapOf<String, Int>() // Initialize with empty category scores
-        )
+        userDocRef.get().addOnSuccessListener { document ->
+            if (!document.exists()) {
+                val userData = hashMapOf(
+                    "userId" to userId,
+                    "name" to finalUserName,
+                    "email" to email,
+                    "totalScore" to 0,
+                    "categoryScores" to mapOf<String, Int>()
+                )
 
-        db.collection("users")
-            .document(userId)
-            .set(userData)
-            .addOnSuccessListener {
-                Log.d("SessionViewModel", "User data saved to Firestore")
+                userDocRef.set(userData).addOnSuccessListener {
+                    Log.d("SessionViewModel", "New user created in Firestore")
+                    onComplete()
+                }.addOnFailureListener {
+                    Log.e("SessionViewModel", "Failed to create user", it)
+                    onComplete()
+                }
+            } else {
+                Log.d("SessionViewModel", "User already exists, skipping Firestore overwrite")
+                onComplete()
             }
-            .addOnFailureListener { exception ->
-                Log.e("SessionViewModel", "Error saving user data", exception)
-            }
+        }.addOnFailureListener {
+            Log.e("SessionViewModel", "Failed to check if user exists", it)
+            onComplete()
+        }
     }
 
-    // Get user name from Firestore (for email login)
-    fun getUserNameFromFirestore(onSuccess: (String?) -> Unit) {
-        val user = auth.currentUser
-        user?.let {
-            db.collection("users")
-                .document(it.uid)
-                .get()
-                .addOnSuccessListener { documentSnapshot ->
-                    val name = documentSnapshot.getString("name")
-                    onSuccess(name)
-                }
-                .addOnFailureListener { exception ->
-                    onSuccess(null)
-                    Log.e("SessionViewModel", "Error getting user name", exception)
-                }
-        } ?: onSuccess(null)
-    }
+
 
     // Fetch user data from Firestore
     fun fetchUserDataFromFirestore(onSuccess: (UserData?) -> Unit) {
-        val user = _currentUser.value
-        if (user == null) {
-            Log.e("SessionViewModel", "No user is currently signed in.")
-            onSuccess(null)
-            return
-        }
+        val user = _currentUser.value ?: return onSuccess(null)
 
-        val userRef = db.collection("users").document(user.uid)
-        userRef.get().addOnSuccessListener { documentSnapshot ->
-            if (documentSnapshot.exists()) {
-                val userData = documentSnapshot.toObject(UserData::class.java)
-                onSuccess(userData)
-            } else {
-                Log.e("SessionViewModel", "User document not found.")
+        db.collection("users")
+            .document(user.uid)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val data = snapshot.toObject(UserData::class.java)
+                onSuccess(data)
+            }
+            .addOnFailureListener {
+                Log.e("SessionViewModel", "Failed to fetch user data", it)
                 onSuccess(null)
             }
-        }.addOnFailureListener { exception ->
-            // Log the exception for better debugging
-            Log.e("SessionViewModel", "Error fetching user data", exception)
-            onSuccess(null)
+    }
+
+    fun loadUserData() {
+        val user = _currentUser.value ?: return
+        fetchUserDataFromFirestore { data ->
+            _userName.value = data?.name ?: "Unknown User"
+            _userScore.value = data?.totalScore ?: 0
         }
     }
 
     fun updateTotalScore(newScore: Int, onComplete: (Boolean) -> Unit = {}) {
-        val user = _currentUser.value
-        if (user == null) {
-            Log.e("SessionViewModel", "No user is signed in.")
-            onComplete(false)
-            return
-        }
-
+        val user = _currentUser.value ?: return onComplete(false)
         val userRef = db.collection("users").document(user.uid)
 
-        db.runTransaction { transaction ->
-            val snapshot = transaction.get(userRef)
+        db.runTransaction { tx ->
+            val snapshot = tx.get(userRef)
             val currentScore = snapshot.getLong("totalScore") ?: 0L
             val updatedScore = currentScore + newScore
-            transaction.update(userRef, "totalScore", updatedScore)
+            tx.update(userRef, "totalScore", updatedScore)
         }.addOnSuccessListener {
-            Log.d("SessionViewModel", "User score updated successfully.")
+            _userScore.value += newScore
+            Log.d("SessionViewModel", "Score updated in Firestore")
             onComplete(true)
-        }.addOnFailureListener { exception ->
-            Log.e("SessionViewModel", "Failed to update score", exception)
+        }.addOnFailureListener {
+            Log.e("SessionViewModel", "Failed to update score", it)
             onComplete(false)
         }
+    }
+
+    fun fetchLeaderboard(onResult: (List<UserData>) -> Unit) {
+        db.collection("users")
+            .orderBy("totalScore", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val leaderboard = snapshot.toObjects(UserData::class.java)
+                onResult(leaderboard)
+            }
+            .addOnFailureListener { e ->
+                Log.e("SessionViewModel", "Failed to fetch leaderboard", e)
+                onResult(emptyList())
+            }
     }
 
 }

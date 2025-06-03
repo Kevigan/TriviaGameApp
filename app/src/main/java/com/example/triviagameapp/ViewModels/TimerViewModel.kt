@@ -17,20 +17,21 @@ class TimerViewModel : ViewModel() {
     private var timerJob: Job? = null
 
     // Start the timer
-    fun startTimer(onTimeOut: () -> Unit) {
-        // If there's already a running timer, cancel it first
+    fun startTimer(timerMillis: Int, onTimeOut: () -> Unit) {
         timerJob?.cancel()
 
-        // Start a new coroutine
+        _timeLeft.value = timerMillis
+        val interval = 100L
+
         timerJob = viewModelScope.launch {
-            val interval = 1000L // Timer updates every 100ms
             while (_timeLeft.value > 0) {
                 delay(interval)
-                _timeLeft.value -= interval.toInt() // Decrease remaining time by 100ms
+                _timeLeft.value = (_timeLeft.value - interval.toInt()).coerceAtLeast(0)
             }
-            onTimeOut()  // Call timeout callback when the timer is done
+            onTimeOut()
         }
     }
+
 
     // Reset the timer
     fun resetTimer() {

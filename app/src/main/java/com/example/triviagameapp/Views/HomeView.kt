@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.triviagameapp.R
 import com.example.triviagameapp.Screen
+import com.example.triviagameapp.ViewModels.GameViewModel
 import com.example.triviagameapp.ViewModels.SessionViewModel
 import com.example.triviagameapp.ui.theme.QuizBlue
 import com.example.triviagameapp.ui.theme.QuizCyan
@@ -55,33 +56,21 @@ import com.google.android.gms.auth.api.signin.GoogleSignInClient
 fun HomeView(
     navController: NavController,
     sessionViewModel: SessionViewModel,
+    gameViewModel: GameViewModel,
     googleSignInClient: GoogleSignInClient,
     googleSignInLauncher: ActivityResultLauncher<Intent>
 ) {
+    gameViewModel.resetScore()
+
     val scaffoldState = rememberScaffoldState()
     val configuration = LocalConfiguration.current
     val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
     val currentUser by sessionViewModel.currentUser.collectAsState()
-    var userName by remember { mutableStateOf("Not logged in") }
-    var userScore by remember { mutableStateOf("0") }
+    val userName by sessionViewModel.userName.collectAsState()
+    val userScore by sessionViewModel.userScore.collectAsState()
+
     val showLoginDialog = remember { mutableStateOf(currentUser == null) }
-
-    // Fetch user name from Firestore if logged in via email
-    LaunchedEffect(currentUser) {
-        if (currentUser != null) {
-            // Fetch user name and score from Firestore if logged in via email
-            sessionViewModel.fetchUserDataFromFirestore { fetchedUserData ->
-                // Update the UI state after fetching user data
-                userName = fetchedUserData?.name ?: "Unknown User"
-                userScore = (fetchedUserData?.totalScore ?: 0).toString()
-            }
-        } else {
-            userName = "Not logged in"
-            userScore = "0"
-        }
-    }
-
 
     // Watch for auth changes to control login dialog
     LaunchedEffect(currentUser) {
@@ -196,7 +185,6 @@ private fun QuizButtons(
         .height(60.dp)
 
     if (isPortrait) {
-        // Portrait mode: 4 buttons stacked vertically
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -207,51 +195,36 @@ private fun QuizButtons(
             Button(
                 onClick = { navController.navigate(Screen.CategoryScreen.route) },
                 modifier = buttonModifier,
-                colors = ButtonDefaults.buttonColors(
-                    backgroundColor = QuizCyan,
-                    contentColor = Color.White
-                )
+                colors = ButtonDefaults.buttonColors(QuizCyan, contentColor = Color.White)
             ) {
                 Text("Play", fontSize = 18.sp)
             }
 
             Button(
-                onClick = { /* Leaderboard */ },
+                onClick = { navController.navigate(Screen.LeaderboardScreen.route) },
                 modifier = buttonModifier,
-                colors = ButtonDefaults.buttonColors(
-                    backgroundColor = QuizCyan,
-                    contentColor = Color.White
-                )
+                colors = ButtonDefaults.buttonColors(QuizCyan, contentColor = Color.White)
             ) {
                 Text("Leaderboard", fontSize = 18.sp)
             }
 
             Button(
-                onClick = { /* Settings */ },
+                onClick = { navController.navigate(Screen.AccountScreen.route) },
                 modifier = buttonModifier,
-                colors = ButtonDefaults.buttonColors(
-                    backgroundColor = QuizCyan,
-                    contentColor = Color.White
-                )
+                colors = ButtonDefaults.buttonColors(QuizCyan, contentColor = Color.White)
             ) {
-                Text("Settings", fontSize = 18.sp)
+                Text("Account", fontSize = 18.sp)
             }
 
             Button(
-                onClick = {
-                    sessionViewModel.signOut(googleSignInClient)
-                },
+                onClick = { sessionViewModel.signOut(googleSignInClient) },
                 modifier = buttonModifier,
-                colors = ButtonDefaults.buttonColors(
-                    backgroundColor = QuizCyan,
-                    contentColor = Color.White
-                )
+                colors = ButtonDefaults.buttonColors(QuizCyan, contentColor = Color.White)
             ) {
                 Text("Logout", fontSize = 18.sp)
             }
         }
     } else {
-        // Landscape mode: 3 buttons in a row, 4th centered beneath
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -263,55 +236,39 @@ private fun QuizButtons(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // First three buttons in a row
                 Button(
                     onClick = { navController.navigate(Screen.CategoryScreen.route) },
                     modifier = buttonModifier,
-                    colors = ButtonDefaults.buttonColors(
-                        backgroundColor = QuizCyan,
-                        contentColor = Color.White
-                    )
+                    colors = ButtonDefaults.buttonColors(QuizCyan, contentColor = Color.White)
                 ) {
                     Text("Play", fontSize = 18.sp)
                 }
 
                 Button(
-                    onClick = { /* Leaderboard */ },
+                    onClick = { navController.navigate(Screen.LeaderboardScreen.route) },
                     modifier = buttonModifier,
-                    colors = ButtonDefaults.buttonColors(
-                        backgroundColor = QuizCyan,
-                        contentColor = Color.White
-                    )
+                    colors = ButtonDefaults.buttonColors(QuizCyan, contentColor = Color.White)
                 ) {
                     Text("Leaderboard", fontSize = 18.sp)
                 }
 
                 Button(
-                    onClick = { /* Settings */ },
+                    onClick = { navController.navigate(Screen.AccountScreen.route) },
                     modifier = buttonModifier,
-                    colors = ButtonDefaults.buttonColors(
-                        backgroundColor = QuizCyan,
-                        contentColor = Color.White
-                    )
+                    colors = ButtonDefaults.buttonColors(QuizCyan, contentColor = Color.White)
                 ) {
-                    Text("Settings", fontSize = 18.sp)
+                    Text("Account", fontSize = 18.sp)
                 }
             }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-
-                // Fourth button centered beneath the first three
                 Button(
-                    onClick = {
-                        sessionViewModel.signOut(googleSignInClient)
-                    },
-                    modifier = buttonModifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        backgroundColor = QuizCyan,
-                        contentColor = Color.White
-                    )
+                    onClick = { sessionViewModel.signOut(googleSignInClient) },
+                    modifier = buttonModifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(QuizCyan, contentColor = Color.White)
                 ) {
                     Text("Logout", fontSize = 18.sp)
                 }
@@ -319,6 +276,7 @@ private fun QuizButtons(
         }
     }
 }
+
 
 
 

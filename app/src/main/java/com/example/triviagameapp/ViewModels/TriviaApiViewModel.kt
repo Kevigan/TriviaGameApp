@@ -38,7 +38,7 @@ class TriviaApiViewModel(private val apiService: ApiService) : ViewModel() {
         }
     }
 
-    fun fetchTriviaQuestions(categoryId: Int) {
+    fun fetchTriviaQuestions(categoryId: Int, difficulty: String) {
         viewModelScope.launch {
             _isLoading.value = true
             try {
@@ -47,10 +47,10 @@ class TriviaApiViewModel(private val apiService: ApiService) : ViewModel() {
                     amount = 10,
                     encode = "url3986",
                     token = token,
-                    category = categoryId
+                    category = categoryId,
+                    difficulty = difficulty.lowercase() // Ensure it's lowercase
                 )
 
-                // Decode each question and answer
                 _triviaQuestions.value = response.results.map {
                     it.copy(
                         question = decodeText(it.question),
@@ -66,4 +66,5 @@ class TriviaApiViewModel(private val apiService: ApiService) : ViewModel() {
             }
         }
     }
+
 }

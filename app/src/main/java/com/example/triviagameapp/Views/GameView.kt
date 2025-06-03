@@ -39,7 +39,6 @@ import com.example.triviagameapp.ui.theme.RedTransparent
 fun GameView(
     navController: NavController,
     gameViewModel: GameViewModel,
-    categoryId: Int,
     timerViewModel: TimerViewModel,
     apiService: ApiService = RetrofitInstance.apiService
 ) {
@@ -73,16 +72,20 @@ fun GameView(
     val answerFeedbackMessage = rememberSaveable { mutableStateOf(listOf("", "")) }
 
     // Fetch trivia questions when the composable is first composed
+    val categoryId = gameViewModel.selectedCategoryId
+    val difficulty = gameViewModel.selectedDifficulty
+
     LaunchedEffect(key1 = triviaQuestions.isEmpty()) {
-        if (triviaQuestions.isEmpty()) {
+        if (triviaQuestions.isEmpty() && categoryId != null && difficulty != null) {
             try {
-                triviaApiViewModel.fetchSessionToken()  // Fetch session token first
-                triviaApiViewModel.fetchTriviaQuestions(categoryId)  // Fetch trivia questions once the token is ready
+                triviaApiViewModel.fetchSessionToken()
+                triviaApiViewModel.fetchTriviaQuestions(categoryId, difficulty)
             } catch (e: Exception) {
                 Log.e("GameView", "Error fetching trivia questions", e)
             }
         }
     }
+
 
     // Show the dialog when questions are fetched (but only if the dialog hasn't been shown yet)
     LaunchedEffect(key1 = triviaQuestions.isNotEmpty()) {
@@ -96,7 +99,7 @@ fun GameView(
         gameStarted = true  // Start the game
         currentQuestionIndex = 0  // Start with the first question
         timerViewModel.resetTimer()
-        timerViewModel.startTimer {
+        timerViewModel.startTimer(gameViewModel.timerValue) {
             // Handle timeout (move to next question after time out)
             showAnswerFeedbackDialog.value = true
         }
@@ -105,7 +108,7 @@ fun GameView(
     // Handle exit confirmationCustomDialog
     fun exitGame() {
         showExitDialog.value = false
-        navController.navigateUp() // Exit logic
+        navController.navigate(Screen.HomeScreen.route) // Exit logic
     }
 
     fun shuffleAnswers(index: Int): List<String> {
@@ -123,7 +126,7 @@ fun GameView(
             currentQuestionIndex++
             shuffledAnswers.value = shuffleAnswers(currentQuestionIndex)
             timerViewModel.resetTimer()
-            timerViewModel.startTimer {
+            timerViewModel.startTimer(gameViewModel.timerValue) {
                 showAnswerFeedbackDialog.value = true
             }
         }else{
@@ -189,8 +192,9 @@ fun GameView(
             if (gameStarted) {
                 QuestionTimer(
                     //timeLeft = timeLeft,
+                    timerViewModel,
+                    totalTimeMillis = gameViewModel.timerValue,
                     modifier = Modifier.padding(top = 16.dp),
-                    timerViewModel
                 )
             }
 
@@ -369,17 +373,18 @@ fun AnswerButton(text: String, modifier: Modifier = Modifier, onClick: () -> Uni
 
 @Composable
 fun QuestionTimer(
-    //timeLeft: Int,  // Pass remaining time (timeLeft)
+    timerViewModel: TimerViewModel,
+    totalTimeMillis: Int,
     modifier: Modifier = Modifier,
-    timerViewModel: TimerViewModel
 ) {
-    val timeLeft by rememberSaveable { timerViewModel.timeLeft }
+    val timeLeft by timerViewModel.timeLeft
+    LaunchedEffect(timeLeft) {
+        Log.d("QuestionTimer", "TimeLeft: $timeLeft | Total: $totalTimeMillis | Progress: ${timeLeft / totalTimeMillis.toFloat()}")
+    }
 
-    // Calculate progress as the ratio of remaining time to total time
-    val totalTime = 10000f
-    val progress = timeLeft / totalTime  // Calculate the progress
+    val progress = timeLeft / totalTimeMillis.toFloat()
     LinearProgressIndicator(
-        progress = progress.coerceIn(0f, 1f),  // Make sure progress is between 0 and 1
+        progress = progress.coerceIn(0f, 1f),
         modifier = modifier
             .fillMaxWidth()
             .height(24.dp),
@@ -387,6 +392,7 @@ fun QuestionTimer(
         backgroundColor = Color.LightGray
     )
 }
+
 
 @Composable
 fun CustomDialog(

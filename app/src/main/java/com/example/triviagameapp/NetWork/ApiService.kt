@@ -16,7 +16,8 @@ interface ApiService {
         @Query("amount") amount: Int,
         @Query("encode") encode: String,
         @Query("token") token: String? = null,
-        @Query("category") category: Int? = null
+        @Query("category") category: Int? = null,
+        @Query("difficulty") difficulty: String,
     ): TriviaApiResponse
 
 }

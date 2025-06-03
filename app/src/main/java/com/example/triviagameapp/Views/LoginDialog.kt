@@ -2,6 +2,7 @@ package com.example.triviagameapp.Views
 
 import android.content.Intent
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,7 +29,7 @@ fun LoginDialog(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
-    var userName by remember { mutableStateOf("") } // New variable for the user's name
+    var userName by remember { mutableStateOf("") }
     var isRegisterMode by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
@@ -93,9 +94,11 @@ fun LoginDialog(
                         email.trim(), password,
                         onSuccess = {
                             // Now save the user's name to Firestore
-                            sessionViewModel.saveUserToFirestore(userName.trim(), email.trim())
-                            UiEventDispatcher.send("Registered and logged in")
-                            onLoginSuccess()
+                            sessionViewModel.saveUserToFirestore(userName.trim(), email.trim()) {
+                                sessionViewModel.loadUserData()
+                                UiEventDispatcher.send("Registered and logged in")
+                                onLoginSuccess()
+                            }
                         },
                         onFailure = {
                             Log.e("RegistrationError", "Registration failed: ${it.message}")
@@ -110,8 +113,8 @@ fun LoginDialog(
                             onLoginSuccess()
                         },
                         onFailure = {
-                            Log.e("RegistrationError", "Registration failed: ${it.message}")
-                            UiEventDispatcher.send("Login failed: ${it.message}")
+                            Log.e("LoginError", "Login failed: ${it.message}")
+                            Toast.makeText(context, "${it.message}", Toast.LENGTH_LONG).show()
                         }
                     )
                 }

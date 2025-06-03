@@ -1,6 +1,7 @@
 package com.example.triviagameapp.Views
 
 import android.util.Log
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +15,8 @@ import androidx.compose.material.Button
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -34,6 +37,12 @@ fun ScoreView(
     gameViewModel: GameViewModel,
     sessionViewModel: SessionViewModel
 ) {
+    val userScore by sessionViewModel.userScore.collectAsState()
+
+    BackHandler {
+        navController.navigate(Screen.HomeScreen.route)
+    }
+
     LaunchedEffect(Unit) {
         sessionViewModel.updateTotalScore(gameViewModel.score.value) { success ->
             if (success) {
@@ -72,10 +81,10 @@ fun ScoreView(
             )
 
             Text(
-                text = "All Time Score: 999",
+                text = "All Time Score: $userScore",
                 fontSize = 64.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.Blue,
+                color = Color.White,
                 modifier = Modifier.padding(vertical = 16.dp)
             )
 
@@ -86,7 +95,7 @@ fun ScoreView(
             ) {
                 // Play Again Button
                 Button(
-                    onClick = {  },
+                    onClick = { navController.navigate(Screen.CategoryScreen.route)},
                     modifier = Modifier.weight(1f)
                 ) {
                     Text("Play Again", fontSize = 18.sp)
@@ -94,7 +103,9 @@ fun ScoreView(
 
                 // Return to Menu Button
                 Button(
-                    onClick = { navController.navigate(Screen.HomeScreen.route) },
+                    onClick = {
+                        navController.navigate(Screen.HomeScreen.route)
+                    },
                     modifier = Modifier.weight(1f) // Make the button fill the available space
                 ) {
                     Text("Return to Menu", fontSize = 18.sp)
