@@ -1,4 +1,4 @@
-package com.example.triviagameapp.Views
+package com.example.triviagameapp.views
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
@@ -28,7 +28,6 @@ import androidx.navigation.NavController
 import com.example.triviagameapp.R
 import com.example.triviagameapp.Screen
 import com.example.triviagameapp.ViewModels.GameViewModel
-import com.example.triviagameapp.ViewModels.SessionViewModel
 import com.example.triviagameapp.ui.theme.QuizCyan
 import com.example.triviagameapp.ui.theme.SoftWhite
 

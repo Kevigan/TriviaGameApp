@@ -1,4 +1,4 @@
-package com.example.triviagameapp.Views
+package com.example.triviagameapp.views
 
 import android.content.Intent
 import android.util.Log

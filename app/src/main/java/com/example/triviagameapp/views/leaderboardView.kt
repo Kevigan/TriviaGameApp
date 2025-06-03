@@ -1,4 +1,4 @@
-package com.example.triviagameapp.Views
+package com.example.triviagameapp.views
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image

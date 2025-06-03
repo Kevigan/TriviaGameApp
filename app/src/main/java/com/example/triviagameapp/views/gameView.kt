@@ -1,4 +1,4 @@
-package com.example.triviagameapp.Views
+package com.example.triviagameapp.views
 
 import android.content.res.Configuration
 import android.util.Log
@@ -56,9 +56,6 @@ fun GameView(
     // Store the shuffled answers in a state to retain it across configuration changes
     val shuffledAnswers = rememberSaveable { mutableStateOf<List<String>>(emptyList()) }
 
-    // Track time left using rememberSaveable
-    //val timeLeft by rememberSaveable { timerViewModel.timeLeft }
-
     // Track dialog visibility using rememberSaveable
     val showDialog = rememberSaveable { mutableStateOf(false) }
     val showExitDialog = rememberSaveable { mutableStateOf(false) }
@@ -96,7 +93,7 @@ fun GameView(
 
     // Handle the start button click
     fun startGame() {
-        gameStarted = true  // Start the game
+        gameStarted = true
         currentQuestionIndex = 0  // Start with the first question
         timerViewModel.resetTimer()
         timerViewModel.startTimer(gameViewModel.timerValue) {

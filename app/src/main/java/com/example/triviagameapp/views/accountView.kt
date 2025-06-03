@@ -1,4 +1,4 @@
-package com.example.triviagameapp.Views
+package com.example.triviagameapp.views
 
 import android.widget.Toast
 import androidx.activity.compose.BackHandler

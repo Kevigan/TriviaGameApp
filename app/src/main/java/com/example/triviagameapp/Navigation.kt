@@ -3,21 +3,19 @@ package com.example.triviagameapp
 import android.content.Intent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.compose.runtime.Composable
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
 import com.example.triviagameapp.ViewModels.GameViewModel
 import com.example.triviagameapp.ViewModels.SessionViewModel
 import com.example.triviagameapp.ViewModels.TimerViewModel
-import com.example.triviagameapp.Views.AccountView
-import com.example.triviagameapp.Views.CategoryView
-import com.example.triviagameapp.Views.DifficultyView
-import com.example.triviagameapp.Views.GameView
-import com.example.triviagameapp.Views.HomeView
-import com.example.triviagameapp.Views.LeaderboardView
-import com.example.triviagameapp.Views.ScoreView
+import com.example.triviagameapp.views.AccountView
+import com.example.triviagameapp.views.CategoryView
+import com.example.triviagameapp.views.DifficultyView
+import com.example.triviagameapp.views.GameView
+import com.example.triviagameapp.views.HomeView
+import com.example.triviagameapp.views.LeaderboardView
+import com.example.triviagameapp.views.ScoreView
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 
 @Composable
@@ -41,9 +39,7 @@ fun Navigation(
                 )
         }
 
-        composable(Screen.GameScreen.route) { backStackEntry ->
-            // Retrieve the categoryId from the navigation arguments
-            val categoryId = backStackEntry.arguments?.getString("categoryId")?.toInt() ?: 0
+        composable(Screen.GameScreen.route) {
             GameView(navController = navController, gameViewModel, timerViewModel)
         }
 
